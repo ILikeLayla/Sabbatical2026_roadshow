@@ -1,0 +1,11 @@
+{
+  "name": "gun-match-game-client",
+  "version": "1.0.0",
+  "description": "1v1 Gun Match Game Client",
+  "scripts": {
+    "serve": "python -m http.server 8000"
+  },
+  "keywords": ["game", "phaser", "multiplayer"],
+  "author": "",
+  "license": "MIT"
+}

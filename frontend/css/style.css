@@ -1,0 +1,374 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #000;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    color: #fff;
+    user-select: none;
+}
+
+/* ── Three.js Canvas ── */
+#game-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+}
+
+/* ── UI Overlay ── */
+#ui-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* ── Damage Vignette Flash ── */
+#damage-flash {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(220, 0, 0, 0.85) 100%);
+    opacity: 0;
+    transition: opacity 0.35s ease-out;
+    pointer-events: none;
+}
+
+/* ── Crosshair ── */
+#crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 26px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.85);
+    text-shadow: 0 0 6px #000;
+    display: none;
+    pointer-events: none;
+    line-height: 1;
+    transition: color 0.1s ease, transform 0.1s ease;
+}
+
+/* ── Pointer Lock Hint ── */
+#pointer-lock-msg {
+    position: absolute;
+    bottom: 40px;
+    width: 100%;
+    text-align: center;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.5);
+    display: none;
+    pointer-events: none;
+}
+
+/* ── Generic Screen ── */
+.screen {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.screen.active {
+    display: flex;
+    pointer-events: auto;
+}
+
+/* ── Lobby Screen ── */
+#lobby-screen {
+    background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(10,10,30,0.95));
+    backdrop-filter: blur(6px);
+}
+
+.lobby-content {
+    text-align: center;
+    background: rgba(0, 0, 0, 0.65);
+    padding: 50px 60px;
+    border-radius: 12px;
+    border: 1px solid rgba(100, 120, 255, 0.3);
+    box-shadow: 0 0 60px rgba(100, 100, 255, 0.15);
+}
+
+.lobby-content h1 {
+    font-size: 52px;
+    margin-bottom: 32px;
+    background: linear-gradient(90deg, #667eea, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+}
+
+#username-input {
+    display: block;
+    width: 300px;
+    padding: 14px 16px;
+    font-size: 16px;
+    font-family: 'Courier New', monospace;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(100, 120, 255, 0.4);
+    border-radius: 6px;
+    color: #fff;
+    margin: 0 auto 16px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+#username-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+#username-input:focus {
+    border-color: #667eea;
+}
+
+#join-btn {
+    width: 300px;
+    padding: 14px;
+    font-size: 18px;
+    font-family: 'Courier New', monospace;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    transition: opacity 0.25s, transform 0.1s;
+}
+
+#join-btn:hover:not(:disabled) {
+    opacity: 0.88;
+    transform: translateY(-1px);
+}
+
+#join-btn:disabled {
+    background: #333;
+    color: #666;
+    cursor: not-allowed;
+}
+
+#status-text {
+    margin-top: 20px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: rgba(200, 200, 255, 0.6);
+}
+
+/* ── Game HUD ── */
+#game-screen.active {
+    display: block;
+    pointer-events: none;
+}
+
+.game-hud {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 30px;
+}
+
+.player-info,
+.opponent-info {
+    background: rgba(0, 0, 0, 0.55);
+    padding: 12px 20px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-width: 200px;
+}
+
+.player-info h2,
+.opponent-info h2 {
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.health-bar {
+    width: 160px;
+    height: 14px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.health-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #00cc44, #00ff66);
+    transition: width 0.25s ease, background-color 0.4s;
+}
+
+.opponent-fill {
+    background: linear-gradient(90deg, #cc2233, #ff3344);
+}
+
+.player-info p,
+.opponent-info p {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 1px;
+}
+
+.ammo-display {
+    margin-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 8px;
+}
+
+#ammo-text {
+    font-size: 13px;
+    font-weight: bold;
+    color: rgba(255, 255, 100, 0.8);
+    margin-bottom: 3px;
+    letter-spacing: 1px;
+}
+
+#reload-status {
+    font-size: 10px;
+    color: rgba(255, 150, 100, 0.9);
+    letter-spacing: 1px;
+    min-height: 12px;
+}
+
+/* ── Result Screen ── */
+#result-screen {
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+}
+
+.result-content {
+    text-align: center;
+    padding: 60px 80px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.result-content h1 {
+    font-size: 64px;
+    margin-bottom: 16px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+}
+
+.result-content p {
+    font-size: 18px;
+    margin-bottom: 40px;
+    color: rgba(255, 255, 255, 0.6);
+    letter-spacing: 1px;
+}
+
+#play-again-btn {
+    padding: 14px 50px;
+    font-size: 17px;
+    font-family: 'Courier New', monospace;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    transition: opacity 0.25s, transform 0.1s;
+}
+
+#play-again-btn:hover {
+    opacity: 0.88;
+    transform: translateY(-1px);
+}
+
+/* ── Scoreboard ── */
+#scoreboard {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 8px 22px;
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    white-space: nowrap;
+    pointer-events: none;
+    text-align: center;
+}
+
+#score-you   { color: #00ff88; }
+#score-opp   { color: #ff4455; }
+.score-divider { color: rgba(255, 255, 255, 0.35); }
+.score-label   { font-size: 10px; color: rgba(255, 255, 255, 0.28); letter-spacing: 1px; }
+
+/* ── Round Result Overlay ── */
+#round-overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 5;
+    pointer-events: none;
+}
+
+.round-result-box {
+    text-align: center;
+    padding: 42px 72px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.82);
+}
+
+#round-result-msg {
+    font-size: 48px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+}
+
+#round-result-score {
+    font-size: 38px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.9);
+    letter-spacing: 6px;
+    margin-bottom: 16px;
+}
+
+.round-next-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.3);
+    text-transform: uppercase;
+}
+
+/* ── Final Score line on result screen ── */
+#final-score {
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 32px;
+}

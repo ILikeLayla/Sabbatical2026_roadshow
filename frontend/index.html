@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gun Match 3D</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <canvas id="game-canvas"></canvas>
+
+    <div id="ui-container">
+        <!-- Red vignette flash on taking damage -->
+        <div id="damage-flash"></div>
+
+        <!-- FPS crosshair -->
+        <div id="crosshair">+</div>
+
+        <!-- Pointer lock hint -->
+        <div id="pointer-lock-msg">Click to Aim</div>
+
+        <!-- Lobby Screen -->
+        <div id="lobby-screen" class="screen active">
+            <div class="lobby-content">
+                <h1>Gun Match 3D</h1>
+                <input type="text" id="username-input" placeholder="Enter your username" maxlength="20" autocomplete="off">
+                <button id="join-btn">Join Game</button>
+                <div id="status-text">Waiting for input...</div>
+            </div>
+        </div>
+
+        <!-- Game HUD -->
+        <div id="game-screen" class="screen">
+            <!-- Scoreboard (top centre) -->
+            <div id="scoreboard">
+                <span id="score-you">YOU 0</span>
+                <span class="score-divider"> — </span>
+                <span id="score-opp">0 Opponent</span>
+                <span class="score-label"> · BEST OF 5</span>
+            </div>
+            <div class="game-hud">
+                <div class="player-info">
+                    <h2>You</h2>
+                    <div class="health-bar">
+                        <div id="player-health-fill" class="health-fill"></div>
+                    </div>
+                    <p id="player-health-text">100/100</p>
+                    <div class="ammo-display">
+                        <p id="ammo-text">30/120</p>
+                        <p id="reload-status"></p>
+                    </div>
+                </div>
+                <div class="opponent-info">
+                    <h2 id="opponent-name">Opponent</h2>
+                    <div class="health-bar">
+                        <div id="opponent-health-fill" class="health-fill opponent-fill"></div>
+                    </div>
+                    <p id="opponent-health-text">100/100</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="screen">
+            <div class="result-content">
+                <h1 id="result-title">Victory!</h1>
+                <p id="result-text">You won the match!</p>
+                <p id="final-score"></p>
+                <button id="play-again-btn">Play Again</button>
+            </div>
+        </div>
+
+        <!-- Round Result Overlay (shown between rounds) -->
+        <div id="round-overlay">
+            <div class="round-result-box">
+                <h2 id="round-result-msg">ROUND WON</h2>
+                <div id="round-result-score">0 — 0</div>
+                <p class="round-next-label">Next round starting...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/main.js" defer></script>
+</body>
+</html>

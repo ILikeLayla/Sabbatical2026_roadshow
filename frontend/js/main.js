@@ -75,7 +75,8 @@ accentB.position.set(8, 4, 18);
 scene.add(accentB);
 
 // ─── Arena ─────────────────────────────────────────────────────────────────────
-const colliders = [];
+const colliders  = [];
+const rampMeshes = [];
 
 function buildArena() {
     // ── Floor ──────────────────────────────────────────────────────────
@@ -134,28 +135,35 @@ function buildArena() {
         addBox(2, 0.8, 0.8,  0, 2.6, bz, 0x3a3a5a); // top lintel
     });
 
-    // ── Raised platforms + staircases at x = ±16 ───────────────────────
-    // Platform: 4 wide, 8 deep (z = -5 to 3), 2 m tall
-    // 4 steps per side, each 0.5 m rise × 0.8 m run
-    const PLAT_H = 2.0;
-    const STEP_D = 0.8;
-    const STEP_H = 0.5;
+    // ── Raised platforms + slopes at x = ±16 ─────────────────────────────
+    const PLAT_H     = 2.0;
+    const RAMP_RUN   = 3.2;  // horizontal run of each ramp
+    const RAMP_ANGLE = Math.atan2(PLAT_H, RAMP_RUN); // ≈ 32°
+    const RAMP_LEN   = Math.sqrt(RAMP_RUN * RAMP_RUN + PLAT_H * PLAT_H); // ≈ 3.77 m
+
     [-16, 16].forEach(px => {
         addBox(4, PLAT_H, 8, px, PLAT_H / 2, -1, 0x4a3a2a); // platform body
 
-        // South stairs (player2 climbs from +z side)
-        for (let i = 0; i < 4; i++) {
-            const h  = PLAT_H - i * STEP_H;             // 2.0, 1.5, 1.0, 0.5
-            const cz = 3 + STEP_D * 0.5 + i * STEP_D;  // 3.4, 4.2, 5.0, 5.8
-            addBox(4, h, STEP_D, px, h / 2, cz, 0x5a4a3a);
+        function addRampSlab(cz, rotX) {
+            const mesh = new THREE.Mesh(
+                new THREE.BoxGeometry(4, 0.22, RAMP_LEN),
+                new THREE.MeshLambertMaterial({ color: 0x5a4a3a })
+            );
+            mesh.position.set(px, PLAT_H / 2, cz);
+            mesh.rotation.x = rotX;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+            rampMeshes.push(mesh);
+            mesh.updateMatrixWorld();
         }
 
-        // North stairs (player1 climbs from -z side)
-        for (let i = 0; i < 4; i++) {
-            const h  = PLAT_H - i * STEP_H;
-            const cz = -5 - STEP_D * 0.5 - i * STEP_D; // -5.4, -6.2, -7.0, -7.8
-            addBox(4, h, STEP_D, px, h / 2, cz, 0x5a4a3a);
-        }
+        // South ramp: high end (y=2) at z=3 → low end (y=0) at z=6.2
+        // rotX = +RAMP_ANGLE makes local -Z end high, local +Z end low
+        addRampSlab(4.6, +RAMP_ANGLE);
+
+        // North ramp: high end (y=2) at z=-5 → low end (y=0) at z=-8.2
+        addRampSlab(-6.6, -RAMP_ANGLE);
     });
 
     // ── Cover boxes ─────────────────────────────────────────────────────
@@ -172,7 +180,53 @@ function buildArena() {
 }
 buildArena();
 
-// ─── Opponent Mesh ─────────────────────────────────────────────────────────────
+// ─── Wall Signs ────────────────────────────────────────────────────────────────
+(function() {
+    function makeSignTexture() {
+        const c = document.createElement('canvas');
+        c.width = 1024; c.height = 384;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#12122a';
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(12, 12, c.width - 24, c.height - 24);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 110px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Sabbatical 2026', c.width / 2, 148);
+        ctx.font = '56px sans-serif';
+        ctx.fillStyle = 'rgba(200,220,255,0.85)';
+        ctx.fillText('From Ideas To Website', c.width / 2, 272);
+        return new THREE.CanvasTexture(c);
+    }
+
+    function addSign(x, y, z, rotY) {
+        const mesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(6, 2.25),
+            new THREE.MeshBasicMaterial({ map: makeSignTexture() })
+        );
+        mesh.position.set(x, y, z);
+        mesh.rotation.y = rotY;
+        scene.add(mesh);
+    }
+
+    // West wall (x = -25), facing east (+X)
+    addSign(-24.4, 3.2,  4,  Math.PI / 2);
+
+    // East wall (x = +25), facing west (-X)
+    addSign( 24.4, 3.2, -4, -Math.PI / 2);
+
+    // North wall (z = -25), facing south (+Z)
+    addSign(  6,   3.2, -24.4, 0);
+
+    // South wall (z = +25), facing north (-Z)
+    addSign( -6,   3.2,  24.4, Math.PI);
+})();
+
+
+
 const opponentGroup = new THREE.Group();
 
 const bodyMesh = new THREE.Mesh(
@@ -245,12 +299,16 @@ let isLocked = false;
 let verticalVelocity = 0;
 let isGrounded = true;
 let isSquatting = false;
+let isMovingFlag = false;   // readable by shoot() outside the game loop
+let currentSpread = 0.002; // normalised screen units, animated each frame
 let cameraHeightTarget = PLAYER_HEIGHT;
 let cameraHeightCurrent = PLAYER_HEIGHT;
 const keys = { w: false, a: false, s: false, d: false, space: false, shift: false };
 
 // ─── Shooting ──────────────────────────────────────────────────────────────────
 const raycaster      = new THREE.Raycaster();
+// Downward ray for ramp-surface sampling (max 2.5 m)
+const groundCaster   = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 2.5);
 const bulletLines    = [];
 const impactParticles = [];
 let   canShoot       = true;
@@ -272,12 +330,10 @@ function createTracer(start, end) {
 }
 
 function flashHitMarker() {
-    const ch = document.getElementById('crosshair');
-    ch.style.color = '#ff2222';
-    ch.style.transform = 'translate(-50%, -50%) scale(1.4)';
+    if (!crosshairEl) return;
+    crosshairEl.querySelectorAll('.ch-line').forEach(l => l.style.background = '#ff2222');
     setTimeout(() => {
-        ch.style.color = 'rgba(255,255,255,0.85)';
-        ch.style.transform = 'translate(-50%, -50%) scale(1)';
+        crosshairEl.querySelectorAll('.ch-line').forEach(l => l.style.background = 'rgba(255,255,255,0.9)');
     }, 120);
 }
 
@@ -329,10 +385,16 @@ function shoot() {
     updateAmmoUI();
 
     showMuzzleFlash();
-    raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+
+    // Apply spread: random offset within a circle of radius currentSpread
+    const angle  = Math.random() * Math.PI * 2;
+    const radius = Math.random() * currentSpread;
+    const sx = Math.cos(angle) * radius;
+    const sy = Math.sin(angle) * radius;
+    raycaster.setFromCamera({ x: sx, y: sy }, camera);
 
     // Cast against both player meshes AND all obstacles
-    const allTargets = [bodyMesh, headMesh, ...colliders];
+    const allTargets = [bodyMesh, headMesh, ...colliders, ...rampMeshes];
     const hits = raycaster.intersectObjects(allTargets, false);
     // Tracer starts at the muzzle tip (world space), ends at hit or max range
     const tracerOrigin = muzzleFlash.getWorldPosition(new THREE.Vector3());
@@ -547,7 +609,7 @@ socket.on('opponent_shot', data => {
 
     // Raycast from opponent's muzzle through colliders to find where tracer stops
     const oppRay = new THREE.Raycaster(start, dir, 0, 40);
-    const obstacleHits = oppRay.intersectObjects(colliders, false);
+    const obstacleHits = oppRay.intersectObjects([...colliders, ...rampMeshes], false);
     const tracerEnd = obstacleHits.length > 0
         ? obstacleHits[0].point.clone()
         : start.clone().addScaledVector(dir, 40);
@@ -741,6 +803,13 @@ function animate() {
                 if (bb.max.y > groundY) groundY = bb.max.y;
             }
         }
+        // Ramp surface — cast a ray straight down and sample the exact slope height
+        groundCaster.ray.origin.copy(playerPos);
+        const rampGroundHits = groundCaster.intersectObjects(rampMeshes, false);
+        if (rampGroundHits.length > 0) {
+            const surfY = playerPos.y - rampGroundHits[0].distance;
+            if (surfY > groundY) groundY = surfY;
+        }
         const floorY = groundY + PLAYER_HEIGHT;
         if (playerPos.y <= floorY) {
             playerPos.y = floorY;
@@ -757,6 +826,7 @@ function animate() {
         );
 
         const isMoving = moveDir.lengthSq() > 0;
+        isMovingFlag = isMoving;
         const currentSpeed = isSquatting ? SQUAT_SPEED : MOVE_SPEED;
 
         if (isMoving) {
@@ -769,7 +839,7 @@ function animate() {
 
         resolveCollisions();
 
-        // Step-down: while moving, snap to a surface ≤ 0.6 m below (smooth stair descent)
+        // Step-down: snap to a surface ≤ 0.6 m below (handles box edges and ramp ends)
         if (!isGrounded && verticalVelocity <= 0) {
             let dropY = null;
             for (const obj of colliders) {
@@ -783,12 +853,42 @@ function animate() {
                     if (dropY === null || bb.max.y > dropY) dropY = bb.max.y;
                 }
             }
+            // Also check ramp surfaces via downward ray
+            groundCaster.ray.origin.copy(playerPos);
+            const rampDropHits = groundCaster.intersectObjects(rampMeshes, false);
+            if (rampDropHits.length > 0) {
+                const rampSurfY = playerPos.y - rampDropHits[0].distance;
+                const feetY     = playerPos.y - PLAYER_HEIGHT;
+                if (feetY - rampSurfY < 0.6 && rampSurfY <= feetY) {
+                    if (dropY === null || rampSurfY > dropY) dropY = rampSurfY;
+                }
+            }
             if (dropY !== null) {
                 playerPos.y = dropY + PLAYER_HEIGHT;
                 verticalVelocity = 0;
                 isGrounded = true;
             }
         }
+
+        // ── Spread: determine target and lerp currentSpread toward it ──────
+        const BASE_SPREAD   = 0.002;  // standing still / squatting
+        const MOVE_SPREAD   = 0.046;  // walking
+        const JUMP_SPREAD   = 0.12;   // in the air
+        const ADS_MULT      = 0.3;    // ADS reduces spread
+        let spreadTarget;
+        if (!isGrounded) {
+            spreadTarget = JUMP_SPREAD;
+        } else if (isMovingFlag) {
+            spreadTarget = MOVE_SPREAD;
+        } else {
+            spreadTarget = BASE_SPREAD; // standing or squatting
+        }
+        if (isADS) spreadTarget *= ADS_MULT;
+        currentSpread += (spreadTarget - currentSpread) * 0.18;
+
+        // Update crosshair gap: map 0.002–0.12 spread → 4–40 px gap
+        const gapPx = 4 + (currentSpread / 0.12) * 36;
+        if (crosshairEl) crosshairEl.style.setProperty('--g', gapPx.toFixed(1) + 'px');
 
         // Smooth camera height transition when squatting
         cameraHeightCurrent += (cameraHeightTarget - cameraHeightCurrent) * 0.12;

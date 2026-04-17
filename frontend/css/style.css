@@ -49,15 +49,28 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 26px;
-    font-weight: bold;
-    color: rgba(255, 255, 255, 0.85);
-    text-shadow: 0 0 6px #000;
+    width: 0;
+    height: 0;
     display: none;
     pointer-events: none;
-    line-height: 1;
-    transition: color 0.1s ease, transform 0.1s ease;
 }
+
+.ch-line {
+    position: absolute;
+    background: rgba(255,255,255,0.9);
+    box-shadow: 0 0 3px #000;
+}
+
+/* vertical lines */
+.ch-top, .ch-bottom  { width: 2px; height: 8px; left: -1px; }
+/* horizontal lines */
+.ch-left, .ch-right  { width: 8px; height: 2px; top: -1px; }
+
+/* gap is controlled via --g custom property set by JS */
+.ch-top    { bottom: calc(var(--g, 6px) + 0px); }
+.ch-bottom { top:    calc(var(--g, 6px) + 0px); }
+.ch-left   { right:  calc(var(--g, 6px) + 0px); }
+.ch-right  { left:   calc(var(--g, 6px) + 0px); }
 
 /* ── Pointer Lock Hint ── */
 #pointer-lock-msg {

@@ -39,6 +39,10 @@ const damageFlashEl  = document.getElementById('damage-flash');
 const ammoText       = document.getElementById('ammo-text');
 const reloadStatus   = document.getElementById('reload-status');
 
+// ─── Audio ─────────────────────────────────────────────────────────────────────
+const shotSound = new Audio('../static/shot.mp3');
+const hitSound  = new Audio('../static/hit.ogg');
+
 // ─── Three.js Core ─────────────────────────────────────────────────────────────
 const canvas   = document.getElementById('game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -426,6 +430,10 @@ function shoot() {
         yaw,
         pitch
     });
+
+    // Play shot sound
+    shotSound.currentTime = 0;
+    shotSound.play();
 }
 
 // ─── Collision Resolution ──────────────────────────────────────────────────────
@@ -621,6 +629,9 @@ socket.on('take_damage', data => {
     gameState.playerHealth = Math.max(0, data.health);
     updateHealthUI('player', gameState.playerHealth, 100);
     triggerDamageFlash();
+    // Play hit sound
+    hitSound.currentTime = 0;
+    hitSound.play();
 });
 
 socket.on('round_end', data => {
